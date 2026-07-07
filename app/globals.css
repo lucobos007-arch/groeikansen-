@@ -689,6 +689,17 @@ body {
   border-radius: 14px;
   padding: 18px 20px;
 }
+.home-text p {
+  margin: 0 0 14px;
+}
+.home-text p:last-child {
+  margin-bottom: 0;
+}
+.home-text-note {
+  color: var(--muted);
+  font-size: 13.5px;
+  font-style: italic;
+}
 
 /* Footer */
 .footer {

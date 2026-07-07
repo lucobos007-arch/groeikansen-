@@ -442,17 +442,26 @@ function HomeTab() {
           <div className="home-brand-subtitle">Je persoonlijke AI-marktbriefing</div>
         </div>
       </div>
-      <p className="home-text">
-        Veel mensen werken hun hele leven hard voor geld, maar vergeten dat
-        geld ook voor hen kan werken. Door te investeren geef je jouw
-        vermogen de kans om te groeien en kun je op de lange termijn meer
-        financiële vrijheid opbouwen. Inflatie zorgt ervoor dat spaargeld
-        vaak minder waard wordt, terwijl verstandig investeren kan helpen om
-        je koopkracht te behouden en je financiële doelen dichterbij te
-        brengen. De belangrijkste stap is niet wachten op het perfecte
-        moment, maar beginnen met het opbouwen van je toekomst. Let op: wat
-        wij geven is geen financieel advies.
-      </p>
+      <div className="home-text">
+        <p>
+          Veel mensen werken hun hele leven hard voor geld, maar vergeten dat
+          geld ook voor hen kan werken. Door te investeren geef je jouw
+          vermogen de kans om te groeien en kun je op de lange termijn meer
+          financiële vrijheid opbouwen.
+        </p>
+        <p>
+          Inflatie zorgt ervoor dat spaargeld vaak minder waard wordt,
+          terwijl verstandig investeren kan helpen om je koopkracht te
+          behouden en je financiële doelen dichterbij te brengen.
+        </p>
+        <p>
+          De belangrijkste stap is niet wachten op het perfecte moment, maar
+          beginnen met het opbouwen van je toekomst.
+        </p>
+        <p className="home-text-note">
+          Let op: wat wij geven is geen financieel advies.
+        </p>
+      </div>
     </div>
   );
 }
