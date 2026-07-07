@@ -462,6 +462,11 @@ function HomeTab() {
           Let op: wat wij geven is geen financieel advies.
         </p>
       </div>
+      <img
+        className="home-graphic"
+        src="/home-graphic.png"
+        alt="Groeiende investering"
+      />
     </div>
   );
 }
