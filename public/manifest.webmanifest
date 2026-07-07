@@ -1,0 +1,31 @@
+{
+  "name": "Groeikansen — AI marktbriefing",
+  "short_name": "Groeikansen",
+  "description": "Persoonlijke AI-analist die hoog-potentiële groeiaandelen vindt. Research, geen financieel advies.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0F1626",
+  "theme_color": "#0F1626",
+  "orientation": "portrait",
+  "lang": "nl",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
