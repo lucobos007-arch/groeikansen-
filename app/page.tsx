@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 
 type Speed = "fast" | "fresh";
-type Tab = "scan" | "stock" | "portfolio" | "news" | "calculator";
+type Tab = "home" | "scan" | "stock" | "portfolio" | "news" | "calculator";
 
 interface Opportunity {
   rank?: number;
@@ -429,9 +429,29 @@ function CompoundCalculator({
   );
 }
 
+function HomeTab() {
+  return (
+    <div className="home-tab">
+      <img className="home-logo" src="/home-logo.png" alt="Groeikansen" />
+      <p className="home-text">
+        Veel mensen werken hun hele leven hard voor geld, maar vergeten dat
+        geld ook voor hen kan werken. Door te investeren geef je jouw
+        vermogen de kans om te groeien en kun je op de lange termijn meer
+        financiële vrijheid opbouwen. Inflatie zorgt ervoor dat spaargeld
+        vaak minder waard wordt, terwijl verstandig investeren kan helpen om
+        je koopkracht te behouden en je financiële doelen dichterbij te
+        brengen. De belangrijkste stap is niet wachten op het perfecte
+        moment, maar beginnen met het opbouwen van je toekomst. Let op: wat
+        wij geven is geen financieel advies.
+      </p>
+      <img className="home-graphic" src="/home-graphic.png" alt="" />
+    </div>
+  );
+}
+
 export default function Page() {
   const [speed, setSpeed] = useState<Speed>("fast");
-  const [tab, setTab] = useState<Tab>("scan");
+  const [tab, setTab] = useState<Tab>("home");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -587,30 +607,41 @@ export default function Page() {
       </header>
 
       {/* Snelheidsschakelaar */}
-      <div className="speed" role="group" aria-label="Snelheid">
-        <button
-          className={speed === "fast" ? "active" : ""}
-          onClick={() => setSpeed("fast")}
-          disabled={loading}
-        >
-          ⚡ Snel
-        </button>
-        <button
-          className={speed === "fresh" ? "active fresh" : ""}
-          onClick={() => setSpeed("fresh")}
-          disabled={loading}
-        >
-          🌐 Vers van het web
-        </button>
-      </div>
-      <p className="speed-hint">
-        {speed === "fast"
-          ? "Snelle analyse uit de kennis van het model — een paar seconden."
-          : "Zoekt live nieuws op het web — actueler, maar trager."}
-      </p>
+      {tab !== "home" && tab !== "calculator" && (
+        <>
+          <div className="speed" role="group" aria-label="Snelheid">
+            <button
+              className={speed === "fast" ? "active" : ""}
+              onClick={() => setSpeed("fast")}
+              disabled={loading}
+            >
+              ⚡ Snel
+            </button>
+            <button
+              className={speed === "fresh" ? "active fresh" : ""}
+              onClick={() => setSpeed("fresh")}
+              disabled={loading}
+            >
+              🌐 Vers van het web
+            </button>
+          </div>
+          <p className="speed-hint">
+            {speed === "fast"
+              ? "Snelle analyse uit de kennis van het model — een paar seconden."
+              : "Zoekt live nieuws op het web — actueler, maar trager."}
+          </p>
+        </>
+      )}
 
       {/* Tabs */}
       <div className="tabs">
+        <button
+          className={tab === "home" ? "active" : ""}
+          onClick={() => setTab("home")}
+          disabled={loading}
+        >
+          Home
+        </button>
         <button
           className={tab === "scan" ? "active" : ""}
           onClick={() => setTab("scan")}
@@ -649,7 +680,9 @@ export default function Page() {
       </div>
 
       {/* Inhoud per tab */}
-      {tab === "calculator" ? (
+      {tab === "home" ? (
+        <HomeTab />
+      ) : tab === "calculator" ? (
         <CompoundCalculator calc={calc} setCalc={setCalc} result={calcResult} />
       ) : tab === "scan" ? (
         <>
@@ -762,7 +795,7 @@ export default function Page() {
       ) : null}
 
       {/* Laadstatus */}
-      {tab !== "calculator" && loading && (
+      {tab !== "calculator" && tab !== "home" && loading && (
         <div className="loading">
           <div className="spinner" />
           <div className="rot">{rotList[rotIdx]}</div>
@@ -771,7 +804,7 @@ export default function Page() {
       )}
 
       {/* Fout */}
-      {tab !== "calculator" && !loading && error && (
+      {tab !== "calculator" && tab !== "home" && !loading && error && (
         <div className="error-box">{error}</div>
       )}
 
