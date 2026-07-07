@@ -432,7 +432,16 @@ function CompoundCalculator({
 function HomeTab() {
   return (
     <div className="home-tab">
-      <img className="home-logo" src="/home-logo.png" alt="Groeikansen" />
+      <h2 className="home-welcome">Welkom bij Groeikansen</h2>
+      <div className="home-brand">
+        <img className="home-brand-icon" src="/icon-192.png" alt="" />
+        <div>
+          <div className="home-brand-title">
+            Groei<span className="accent">kansen</span>
+          </div>
+          <div className="home-brand-subtitle">Je persoonlijke AI-marktbriefing</div>
+        </div>
+      </div>
       <p className="home-text">
         Veel mensen werken hun hele leven hard voor geld, maar vergeten dat
         geld ook voor hen kan werken. Door te investeren geef je jouw
@@ -444,7 +453,6 @@ function HomeTab() {
         moment, maar beginnen met het opbouwen van je toekomst. Let op: wat
         wij geven is geen financieel advies.
       </p>
-      <img className="home-graphic" src="/home-graphic.png" alt="" />
     </div>
   );
 }

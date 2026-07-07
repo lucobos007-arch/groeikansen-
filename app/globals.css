@@ -644,11 +644,40 @@ body {
   gap: 22px;
   padding: 8px 0 12px;
 }
-.home-logo {
-  width: 100%;
-  max-width: 480px;
-  height: auto;
+.home-welcome {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 800;
+  text-align: center;
+  letter-spacing: 0.2px;
+}
+.home-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--panel);
+  border: 1px solid var(--border);
   border-radius: 16px;
+  padding: 18px 26px;
+}
+.home-brand-icon {
+  width: 52px;
+  height: 52px;
+  flex: 0 0 auto;
+}
+.home-brand-title {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--text);
+}
+.home-brand-title .accent {
+  color: var(--gold);
+}
+.home-brand-subtitle {
+  margin-top: 2px;
+  font-size: 14px;
+  color: var(--muted);
 }
 .home-text {
   margin: 0;
@@ -659,11 +688,6 @@ body {
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 18px 20px;
-}
-.home-graphic {
-  width: 100%;
-  max-width: 380px;
-  height: auto;
 }
 
 /* Footer */
