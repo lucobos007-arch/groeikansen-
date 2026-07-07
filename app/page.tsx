@@ -162,14 +162,22 @@ interface CalcResult {
   realFuture: number;
 }
 
+// Leeg invoerveld levert NaN op (zie parseNum); reken daar overal met 0 mee
+// zodat de live berekening niet breekt terwijl je typt.
+const safeNum = (v: number, fallback = 0) => (Number.isFinite(v) ? v : fallback);
+
 function computeCompound(p: CalcInput): CalcResult {
-  const years = Math.max(1, Math.min(60, Math.round(p.years) || 1));
+  const years = Math.max(1, Math.min(60, Math.round(safeNum(p.years, 1)) || 1));
   const periodsPerYear = p.compoundFreq === "daily" ? 365 : p.compoundFreq === "yearly" ? 1 : 12;
-  const r = p.returnPct / 100;
+  const r = safeNum(p.returnPct) / 100;
   const effectiveAnnual = Math.pow(1 + r / periodsPerYear, periodsPerYear) - 1;
   const monthlyRate = Math.pow(1 + effectiveAnnual, 1 / 12) - 1;
+  const start = safeNum(p.start);
+  const contribution = safeNum(p.contribution);
+  const taxPct = safeNum(p.taxPct);
+  const inflationPct = safeNum(p.inflationPct);
 
-  let balance = Math.max(0, p.start);
+  let balance = Math.max(0, start);
   let totalContrib = balance;
   let yearStartBalance = balance;
   let yearStartContrib = totalContrib;
@@ -179,17 +187,17 @@ function computeCompound(p: CalcInput): CalcResult {
   for (let m = 1; m <= years * 12; m++) {
     balance *= 1 + monthlyRate;
     if (p.contribFreq === "monthly") {
-      balance += p.contribution;
-      totalContrib += p.contribution;
+      balance += contribution;
+      totalContrib += contribution;
     } else if (p.contribFreq === "yearly" && m % 12 === 0) {
-      balance += p.contribution;
-      totalContrib += p.contribution;
+      balance += contribution;
+      totalContrib += contribution;
     }
 
     if (m % 12 === 0) {
       const yearProfit = balance - yearStartBalance - (totalContrib - yearStartContrib);
-      if (p.taxPct > 0 && yearProfit > 0) {
-        balance -= yearProfit * (p.taxPct / 100);
+      if (taxPct > 0 && yearProfit > 0) {
+        balance -= yearProfit * (taxPct / 100);
       }
       rows.push({ year: m / 12, contributions: totalContrib, balance });
       yearStartBalance = balance;
@@ -199,7 +207,7 @@ function computeCompound(p: CalcInput): CalcResult {
 
   const future = balance;
   const totalReturn = future - totalContrib;
-  const realFuture = future / Math.pow(1 + p.inflationPct / 100, years);
+  const realFuture = future / Math.pow(1 + inflationPct / 100, years);
 
   return { rows, future, totalContrib, totalReturn, realFuture };
 }
@@ -231,10 +239,16 @@ function CompoundCalculator({
   const pointsContrib = toPoints("contributions");
   const areaPoints = `0,${chartH} ${pointsBalance} ${chartW},${chartH}`;
 
-  const step = calc.years > 25 ? 5 : calc.years > 12 ? 2 : 1;
+  const yearsSafe = safeNum(calc.years, 1);
+  const step = yearsSafe > 25 ? 5 : yearsSafe > 12 ? 2 : 1;
   const tableRows = result.rows.filter(
-    (row) => row.year === 0 || row.year % step === 0 || row.year === calc.years
+    (row) => row.year === 0 || row.year % step === 0 || row.year === yearsSafe
   );
+
+  // Leeg veld tonen als leeg (niet als "0"), zodat je niet per ongeluk "0100"
+  // typt nadat je het veld hebt leeggemaakt.
+  const numField = (v: number) => (Number.isFinite(v) ? v : "");
+  const parseNum = (raw: string): number => (raw === "" ? NaN : Number(raw));
 
   return (
     <>
@@ -255,8 +269,8 @@ function CompoundCalculator({
               type="number"
               min={0}
               step={100}
-              value={calc.start}
-              onChange={(e) => setCalc((c) => ({ ...c, start: Number(e.target.value) || 0 }))}
+              value={numField(calc.start)}
+              onChange={(e) => setCalc((c) => ({ ...c, start: parseNum(e.target.value) }))}
             />
           </div>
         </div>
@@ -269,9 +283,9 @@ function CompoundCalculator({
               type="number"
               min={0}
               step={10}
-              value={calc.contribution}
+              value={numField(calc.contribution)}
               onChange={(e) =>
-                setCalc((c) => ({ ...c, contribution: Number(e.target.value) || 0 }))
+                setCalc((c) => ({ ...c, contribution: parseNum(e.target.value) }))
               }
             />
           </div>
@@ -297,10 +311,8 @@ function CompoundCalculator({
             min={1}
             max={60}
             step={1}
-            value={calc.years}
-            onChange={(e) =>
-              setCalc((c) => ({ ...c, years: Math.max(1, Number(e.target.value) || 1) }))
-            }
+            value={numField(calc.years)}
+            onChange={(e) => setCalc((c) => ({ ...c, years: parseNum(e.target.value) }))}
           />
         </div>
 
@@ -309,8 +321,8 @@ function CompoundCalculator({
           <input
             type="number"
             step={0.1}
-            value={calc.returnPct}
-            onChange={(e) => setCalc((c) => ({ ...c, returnPct: Number(e.target.value) || 0 }))}
+            value={numField(calc.returnPct)}
+            onChange={(e) => setCalc((c) => ({ ...c, returnPct: parseNum(e.target.value) }))}
           />
         </div>
 
@@ -336,9 +348,9 @@ function CompoundCalculator({
           <input
             type="number"
             step={0.1}
-            value={calc.inflationPct}
+            value={numField(calc.inflationPct)}
             onChange={(e) =>
-              setCalc((c) => ({ ...c, inflationPct: Number(e.target.value) || 0 }))
+              setCalc((c) => ({ ...c, inflationPct: parseNum(e.target.value) }))
             }
           />
         </div>
@@ -348,8 +360,8 @@ function CompoundCalculator({
           <input
             type="number"
             step={0.1}
-            value={calc.taxPct}
-            onChange={(e) => setCalc((c) => ({ ...c, taxPct: Number(e.target.value) || 0 }))}
+            value={numField(calc.taxPct)}
+            onChange={(e) => setCalc((c) => ({ ...c, taxPct: parseNum(e.target.value) }))}
           />
         </div>
       </div>
@@ -369,7 +381,7 @@ function CompoundCalculator({
         </div>
       </div>
       <p className="speed-hint">
-        Reëel (na {calc.inflationPct}% inflatie per jaar): ongeveer{" "}
+        Reëel (na {safeNum(calc.inflationPct)}% inflatie per jaar): ongeveer{" "}
         {formatEuro(result.realFuture)} in huidige koopkracht.
       </p>
 
