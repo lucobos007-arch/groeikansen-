@@ -484,7 +484,7 @@ function HomeTab() {
 }
 
 export default function Page() {
-  const [speed, setSpeed] = useState<Speed>("fast");
+  const [speed, setSpeed] = useState<Speed>("fresh");
   const [tab, setTab] = useState<Tab>("home");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
