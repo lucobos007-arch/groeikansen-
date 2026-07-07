@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 
 type Speed = "fast" | "fresh";
-type Tab = "scan" | "stock" | "portfolio" | "news";
+type Tab = "scan" | "stock" | "portfolio" | "news" | "calculator";
 
 interface Opportunity {
   rank?: number;
@@ -137,6 +137,298 @@ function formatEuro(n: number): string {
   return n.toLocaleString("nl-NL", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 }
 
+/* ---------- Rente-op-rentecalculator (puur client-side, geen AI) ---------- */
+
+interface CalcInput {
+  start: number;
+  contribution: number;
+  contribFreq: "monthly" | "yearly";
+  years: number;
+  returnPct: number;
+  inflationPct: number;
+  taxPct: number;
+  compoundFreq: "daily" | "monthly" | "yearly";
+}
+interface CalcRow {
+  year: number;
+  contributions: number;
+  balance: number;
+}
+interface CalcResult {
+  rows: CalcRow[];
+  future: number;
+  totalContrib: number;
+  totalReturn: number;
+  realFuture: number;
+}
+
+function computeCompound(p: CalcInput): CalcResult {
+  const years = Math.max(1, Math.min(60, Math.round(p.years) || 1));
+  const periodsPerYear = p.compoundFreq === "daily" ? 365 : p.compoundFreq === "yearly" ? 1 : 12;
+  const r = p.returnPct / 100;
+  const effectiveAnnual = Math.pow(1 + r / periodsPerYear, periodsPerYear) - 1;
+  const monthlyRate = Math.pow(1 + effectiveAnnual, 1 / 12) - 1;
+
+  let balance = Math.max(0, p.start);
+  let totalContrib = balance;
+  let yearStartBalance = balance;
+  let yearStartContrib = totalContrib;
+
+  const rows: CalcRow[] = [{ year: 0, contributions: totalContrib, balance }];
+
+  for (let m = 1; m <= years * 12; m++) {
+    balance *= 1 + monthlyRate;
+    if (p.contribFreq === "monthly") {
+      balance += p.contribution;
+      totalContrib += p.contribution;
+    } else if (p.contribFreq === "yearly" && m % 12 === 0) {
+      balance += p.contribution;
+      totalContrib += p.contribution;
+    }
+
+    if (m % 12 === 0) {
+      const yearProfit = balance - yearStartBalance - (totalContrib - yearStartContrib);
+      if (p.taxPct > 0 && yearProfit > 0) {
+        balance -= yearProfit * (p.taxPct / 100);
+      }
+      rows.push({ year: m / 12, contributions: totalContrib, balance });
+      yearStartBalance = balance;
+      yearStartContrib = totalContrib;
+    }
+  }
+
+  const future = balance;
+  const totalReturn = future - totalContrib;
+  const realFuture = future / Math.pow(1 + p.inflationPct / 100, years);
+
+  return { rows, future, totalContrib, totalReturn, realFuture };
+}
+
+function CompoundCalculator({
+  calc,
+  setCalc,
+  result,
+}: {
+  calc: CalcInput;
+  setCalc: Dispatch<SetStateAction<CalcInput>>;
+  result: CalcResult;
+}) {
+  const maxVal = Math.max(1, ...result.rows.map((row) => row.balance));
+  const chartW = 300;
+  const chartH = 140;
+  const n = result.rows.length;
+
+  const toPoints = (key: "balance" | "contributions") =>
+    result.rows
+      .map((row, i) => {
+        const x = n > 1 ? (i / (n - 1)) * chartW : 0;
+        const y = chartH - (row[key] / maxVal) * (chartH - 10) - 5;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      })
+      .join(" ");
+
+  const pointsBalance = toPoints("balance");
+  const pointsContrib = toPoints("contributions");
+  const areaPoints = `0,${chartH} ${pointsBalance} ${chartW},${chartH}`;
+
+  const step = calc.years > 25 ? 5 : calc.years > 12 ? 2 : 1;
+  const tableRows = result.rows.filter(
+    (row) => row.year === 0 || row.year % step === 0 || row.year === calc.years
+  );
+
+  return (
+    <>
+      <div className="calc-header">
+        <h2>Rente-op-rentecalculator</h2>
+        <p className="subtitle">
+          Bereken hoeveel je inleg kan groeien door rente-op-rente. ⚡ Direct
+          berekend terwijl je typt — geen AI nodig.
+        </p>
+      </div>
+
+      <div className="profile-form calc-form">
+        <div className="form-row">
+          <label>Startbedrag</label>
+          <div className="amount-input">
+            <span>€</span>
+            <input
+              type="number"
+              min={0}
+              step={100}
+              value={calc.start}
+              onChange={(e) => setCalc((c) => ({ ...c, start: Number(e.target.value) || 0 }))}
+            />
+          </div>
+        </div>
+
+        <div className="form-row">
+          <label>Periodieke inleg</label>
+          <div className="amount-input">
+            <span>€</span>
+            <input
+              type="number"
+              min={0}
+              step={10}
+              value={calc.contribution}
+              onChange={(e) =>
+                setCalc((c) => ({ ...c, contribution: Number(e.target.value) || 0 }))
+              }
+            />
+          </div>
+        </div>
+
+        <div className="form-row">
+          <label>Inlegfrequentie</label>
+          <select
+            value={calc.contribFreq}
+            onChange={(e) =>
+              setCalc((c) => ({ ...c, contribFreq: e.target.value as CalcInput["contribFreq"] }))
+            }
+          >
+            <option value="monthly">Maandelijks</option>
+            <option value="yearly">Jaarlijks</option>
+          </select>
+        </div>
+
+        <div className="form-row">
+          <label>Looptijd (jaar)</label>
+          <input
+            type="number"
+            min={1}
+            max={60}
+            step={1}
+            value={calc.years}
+            onChange={(e) =>
+              setCalc((c) => ({ ...c, years: Math.max(1, Number(e.target.value) || 1) }))
+            }
+          />
+        </div>
+
+        <div className="form-row">
+          <label>Verwacht rendement per jaar (%)</label>
+          <input
+            type="number"
+            step={0.1}
+            value={calc.returnPct}
+            onChange={(e) => setCalc((c) => ({ ...c, returnPct: Number(e.target.value) || 0 }))}
+          />
+        </div>
+
+        <div className="form-row">
+          <label>Compoundfrequentie</label>
+          <select
+            value={calc.compoundFreq}
+            onChange={(e) =>
+              setCalc((c) => ({
+                ...c,
+                compoundFreq: e.target.value as CalcInput["compoundFreq"],
+              }))
+            }
+          >
+            <option value="daily">Dagelijks</option>
+            <option value="monthly">Maandelijks</option>
+            <option value="yearly">Jaarlijks</option>
+          </select>
+        </div>
+
+        <div className="form-row">
+          <label>Inflatie per jaar (%)</label>
+          <input
+            type="number"
+            step={0.1}
+            value={calc.inflationPct}
+            onChange={(e) =>
+              setCalc((c) => ({ ...c, inflationPct: Number(e.target.value) || 0 }))
+            }
+          />
+        </div>
+
+        <div className="form-row">
+          <label>Belasting over rendement (%)</label>
+          <input
+            type="number"
+            step={0.1}
+            value={calc.taxPct}
+            onChange={(e) => setCalc((c) => ({ ...c, taxPct: Number(e.target.value) || 0 }))}
+          />
+        </div>
+      </div>
+
+      <div className="calc-stats">
+        <div className="stat-card main">
+          <div className="stat-label">Toekomstig vermogen</div>
+          <div className="stat-value">{formatEuro(result.future)}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Totale inleg</div>
+          <div className="stat-value">{formatEuro(result.totalContrib)}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Totaal rendement</div>
+          <div className="stat-value teal">{formatEuro(result.totalReturn)}</div>
+        </div>
+      </div>
+      <p className="speed-hint">
+        Reëel (na {calc.inflationPct}% inflatie per jaar): ongeveer{" "}
+        {formatEuro(result.realFuture)} in huidige koopkracht.
+      </p>
+
+      <div className="chart-card">
+        <svg
+          className="calc-svg"
+          viewBox={`0 0 ${chartW} ${chartH}`}
+          preserveAspectRatio="none"
+        >
+          <defs>
+            <linearGradient id="calcGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#F4B740" stopOpacity="0.35" />
+              <stop offset="100%" stopColor="#F4B740" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <polygon points={areaPoints} fill="url(#calcGradient)" />
+          <polyline points={pointsBalance} fill="none" stroke="var(--gold)" strokeWidth="2" />
+          <polyline
+            points={pointsContrib}
+            fill="none"
+            stroke="var(--muted)"
+            strokeWidth="1.5"
+            strokeDasharray="4 3"
+          />
+        </svg>
+        <div className="chart-legend">
+          <span>
+            <i className="dot gold" /> Totale waarde
+          </span>
+          <span>
+            <i className="dot muted" /> Totale inleg
+          </span>
+        </div>
+      </div>
+
+      <div className="calc-table-wrap">
+        <table className="calc-table">
+          <thead>
+            <tr>
+              <th>Jaar</th>
+              <th>Ingelegd</th>
+              <th>Waarde</th>
+            </tr>
+          </thead>
+          <tbody>
+            {tableRows.map((row) => (
+              <tr key={row.year}>
+                <td>{row.year}</td>
+                <td>{formatEuro(row.contributions)}</td>
+                <td>{formatEuro(row.balance)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
 export default function Page() {
   const [speed, setSpeed] = useState<Speed>("fast");
   const [tab, setTab] = useState<Tab>("scan");
@@ -157,6 +449,18 @@ export default function Page() {
   });
   const [portfolio, setPortfolio] = useState<PortfolioResult | null>(null);
   const [news, setNews] = useState<NewsResult | null>(null);
+
+  const [calc, setCalc] = useState<CalcInput>({
+    start: 1000,
+    contribution: 200,
+    contribFreq: "monthly",
+    years: 20,
+    returnPct: 7,
+    inflationPct: 2,
+    taxPct: 0,
+    compoundFreq: "monthly",
+  });
+  const calcResult = useMemo(() => computeCompound(calc), [calc]);
 
   const [rotIdx, setRotIdx] = useState(0);
   const rotTimer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -335,10 +639,19 @@ export default function Page() {
         >
           Nieuws
         </button>
+        <button
+          className={tab === "calculator" ? "active" : ""}
+          onClick={() => setTab("calculator")}
+          disabled={loading}
+        >
+          Rendement
+        </button>
       </div>
 
       {/* Inhoud per tab */}
-      {tab === "scan" ? (
+      {tab === "calculator" ? (
+        <CompoundCalculator calc={calc} setCalc={setCalc} result={calcResult} />
+      ) : tab === "scan" ? (
         <>
           <button className="btn-primary" onClick={runScan} disabled={loading}>
             Analyseer de markt
@@ -366,7 +679,7 @@ export default function Page() {
             Haal het laatste nieuws op
           </button>
         </>
-      ) : (
+      ) : tab === "portfolio" ? (
         <div className="profile-form">
           <div className="form-row">
             <label>Risicobereidheid</label>
@@ -446,10 +759,10 @@ export default function Page() {
             Analyseer mijn portfolio
           </button>
         </div>
-      )}
+      ) : null}
 
       {/* Laadstatus */}
-      {loading && (
+      {tab !== "calculator" && loading && (
         <div className="loading">
           <div className="spinner" />
           <div className="rot">{rotList[rotIdx]}</div>
@@ -458,7 +771,9 @@ export default function Page() {
       )}
 
       {/* Fout */}
-      {!loading && error && <div className="error-box">{error}</div>}
+      {tab !== "calculator" && !loading && error && (
+        <div className="error-box">{error}</div>
+      )}
 
       {/* Marktscan-resultaat */}
       {!loading && tab === "scan" && scan && (
